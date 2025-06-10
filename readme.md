@@ -1,108 +1,162 @@
-# Detección y Clasificación de Residuos con IA
+# Detector3000
 
-## 6. Evaluación del Sistema
+🌿 **Detector3000** es una aplicación de clasificación de residuos basada en visión por computador y aprendizaje profundo. Utiliza **Transfer Learning** con **MobileNetV2** para entrenar un modelo capaz de reconocer distintos tipos de basura (cartón, vidrio, metal, papel, plástico) y una interfaz web interactiva construida con **Streamlit**.
 
-### 6.1. Script de Evaluación
+---
 
-El archivo `evaluacion_residuos.py` realiza los siguientes pasos:
-
-1. Carga del modelo entrenado: `modelo_residuos_entrenado_5_clases.h5`.
-2. Preparación del generador de validación (`ImageDataGenerator` con `rescale=1./255`).
-3. Predicción sobre el conjunto de validación.
-4. Cálculo de métricas (precisión, recall, f1-score) mediante `classification_report`.
-5. Generación de la matriz de confusión con `confusion_matrix`.
-6. Guardado de los resultados en:
-
-   * `reporte_clasificacion.txt`
-   * `matriz_confusion.csv`
-
-### 6.2. Cómo ejecutar la evaluación
-
-```bash
-source venv/bin/activate
-python evaluacion_residuos.py
-```
-
-### 6.3. Resultados de la evaluación
-
-* **Reporte de clasificación**: `reporte_clasificacion.txt` (precision, recall, f1-score por clase).
-* **Matriz de confusión**: `matriz_confusion.csv`.
-
-### 6.4. Limitaciones
-
-* Sensibilidad a variaciones de iluminación y calidad de la imagen.
-* Posible confusión entre clases con características visuales similares.
-* Sesgo por distribuciones desiguales de imágenes entre clases.
-* Dependencia de la calidad del dataset y la cámara.
-
-## 7. Entrega del Proyecto
-
-### 7.1. Estructura del repositorio
+## 📂 Estructura del proyecto
 
 ```
-Residuos-IA/
-├── clasificador_residuos.py
-├── detector_streamlit.py
-├── evaluacion_residuos.py
-├── modelo_residuos_entrenado_6_clases.h5
-├── dataset/
-│   ├── Metal/
-│   ├── Vidrio/
-│   ├── Plástico/
-│   ├── Cartón/
-│   ├── Papel/
-│   └── Orgánico/
-├── matriz_confusion.csv
-├── reporte_clasificacion.txt
-├── requirements.txt
-└── README.md
+├── app.py              # Interfaz web en Streamlit
+├── train.py            # Script de entrenamiento del modelo
+├── evaluate.py         # Script de evaluación y generación de métricas
+├── model.h5            # Modelo Keras preentrenado (se genera tras train.py)
+├── classes.npy         # Array de etiquetas (se genera tras train.py)
+├── trashnet/           # Carpeta con subcarpetas por clase y sus imágenes
+│   ├── cardboard/
+│   ├── glass/
+│   ├── metal/
+│   ├── paper/
+│   └── plastic/
+├── report.txt          # Informe de clasificación (se genera tras evaluate.py)
+└── matrix.csv          # Matriz de confusión en CSV (se genera tras evaluate.py)
 ```
 
-### 7.2. Requisitos y dependencias
+---
 
-En `requirements.txt`:
+## 🚀 Requisitos
 
-```txt
-tensorflow-macos
-tensorflow-metal
+* Python 3.7 o superior
+* GPU opcional (acelera el entrenamiento y la inferencia)
+
+Dependencias principales (crear un `requirements.txt` con estas líneas):
+
+```
+streamlit
 opencv-python
-pillow
 numpy
-matplotlib
+tensorflow>=2.4
 scikit-learn
 pandas
-streamlit
 ```
 
-### 7.3. Instalación
+Instálalas con:
 
 ```bash
-python3.11 -m venv venv
-source venv/bin/activate
-pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### 7.4. Uso
+---
 
-1. **Entrenar el modelo**
+## 💾 Preparar los datos
 
-   ```bash
-   python clasificador_residuos.py
+Coloca tu dataset en la carpeta `trashnet/`, organizado así:
+
+```
+trashnet/
+├── cardboard/
+│   ├── img1.jpg
+│   ├── img2.png
+│   └── …
+├── glass/
+│   └── …
+├── metal/
+│   └── …
+├── paper/
+│   └── …
+└── plastic/
+    └── …
+```
+
+Cada subcarpeta debe contener las imágenes de esa clase.
+
+---
+
+## 🏋️‍♂️ Entrenamiento (`train.py`)
+
+1. **Carga de imágenes**
+   Recorre `trashnet/`, redimensiona a 224×224 y almacena en arrays de NumPy.
+
+2. **Preprocesamiento**
+   Normaliza los píxeles (`images = images / 255.0`) y codifica etiquetas con `LabelEncoder`.
+
+3. **Modelo**
+
+   * Usa `MobileNetV2` preentrenado en ImageNet como **base** (capas congeladas).
+   * Añade una capa `Flatten`, una capa densa de 128 unidades (ReLU) y salida softmax para `n` clases.
+
+4. **Compilación y ajuste**
+
+   ```python
+   model.compile(
+       optimizer='adam',
+       loss='sparse_categorical_crossentropy',
+       metrics=['accuracy']
+   )
+   model.fit(X_train, y_train, epochs=10, validation_data=(X_test, y_test))
    ```
-2. **Evaluar el desempeño**
 
-   ```bash
-   python evaluacion_residuos.py
-   ```
-3. **Interfaz de detección**
+5. **Guardado**
 
-   ```bash
-   streamlit run detector_streamlit.py
+   ```python
+   model.save("model.h5")
+   np.save("classes.npy", le.classes_)
    ```
 
-### 7.5. Informe del proyecto
+**Ejecuta**:
 
-El archivo `informe_proyecto.pdf` incluye:
+```bash
+python train.py
+```
 
-* Introducción, metodología, resultados, discusión y conclusiones.
+---
+
+## 🧪 Evaluación (`evaluate.py`)
+
+1. Carga `model.h5`.
+2. Usa `ImageDataGenerator(rescale=1./255)` para leer todo `trashnet/` sin mezclar (`shuffle=False`).
+3. Calcula predicciones y genera:
+
+   * **Classification report** (precision, recall, F1) → `report.txt`
+   * **Matriz de confusión** → `matrix.csv`
+
+**Ejecuta**:
+
+```bash
+python evaluate.py
+```
+
+---
+
+## 🌐 Interfaz web (`app.py`)
+
+La app de Streamlit permite al usuario subir una imagen y ver:
+
+1. **Preprocesamiento**:
+
+   * Redimensiona a 224×224
+   * Normaliza a rango \[0,1]
+
+2. **Inferencia**:
+
+   * Predice con el modelo cargado (`model.h5`)
+   * Busca la etiqueta correspondiente en `classes.npy`
+
+3. **Salida**:
+
+   * Muestra la imagen
+   * Indica la clase detectada y el nivel de confianza
+
+**Ejecuta**:
+
+```bash
+streamlit run app.py
+```
+
+---
+
+## ⚙️ Personalización
+
+* Para ajustar **épocas**, **tamaño de batch** o **arquitectura**, edita `train.py`.
+* Si tu dataset tiene más o menos clases, el modelado se adapta automáticamente al número de carpetas en `trashnet/`.
+* Puedes mejorar la UI de Streamlit (títulos, estilos) modificando `app.py`.
