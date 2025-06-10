@@ -5,8 +5,8 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from sklearn.metrics import classification_report, confusion_matrix
 
-MODEL_PATH = 'trainedModel.keras'
-DATA_DIR = '/Users/rafae/Documents/vscode/trashnet' # Ruta del dataset
+MODEL_PATH = 'model.h5'
+DATA_DIR = 'trashnet' # Ruta del dataset
 BATCH_SIZE = 32
 IMG_SIZE = (224, 224)
 
